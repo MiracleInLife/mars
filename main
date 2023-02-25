@@ -1,0 +1,54 @@
+from flask import Flask, render_template, url_for
+
+app = Flask(__name__)
+
+
+@app.route('/')
+def _():
+    return 'Миссия Колонизация Марса'
+
+
+@app.route('/index')
+def index():
+    return 'И на Марсе будут яблони цвести!'
+
+
+@app.route('/promotion')
+def promotion():
+    return '''<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<p>Человечество вырастает из детства.</p>
+<p>
+Человечеству мала одна планета.</p>
+<p>
+Мы сделаем обитаемыми безжизненные пока планеты.</p>
+<p>И начнем с Марса!</p>
+<p>Присоединяйся!</p>
+</body>
+</html>'''
+
+@app.route('/image_mars')
+def image_mars():
+    return f'''<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<main>
+    <h1>Привет, Марс!</h1>>
+    <img src="/static/img/mars.jpg" alt="error">
+    <p>Вот она какая, красная планета.</p>
+</main>
+</body>
+</html>'''
+
+
+if __name__ == '__main__':
+    app.run(port=8080, host='127.0.0.1')
