@@ -1,54 +1,133 @@
-from flask import Flask, render_template, url_for
+from flask import Flask, request, render_template, url_for
+from data.users import User
+from data.sessions import Session
+from data.viewed_matchs import ViewedMatchs
+from data.viewed_players import ViewedPlayers
+from data import db_session
+from werkzeug.security import generate_password_hash, check_password_hash
+import datetime
+import uuid
 
-app = Flask(__name__)
+
+app = Flask(__name__,  template_folder='templates', static_folder='static')
+app.config['SECRET_KEY'] = 'qwertyuiopasdfghjklzxcvbnm'
 
 
-@app.route('/')
-def _():
-    return 'Миссия Колонизация Марса'
-
-
-@app.route('/index')
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    return 'И на Марсе будут яблони цвести!'
+    if request.method == 'GET':
+        return render_template('page.html')
 
 
-@app.route('/promotion')
-def promotion():
-    return '''<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
-<p>Человечество вырастает из детства.</p>
-<p>
-Человечеству мала одна планета.</p>
-<p>
-Мы сделаем обитаемыми безжизненные пока планеты.</p>
-<p>И начнем с Марса!</p>
-<p>Присоединяйся!</p>
-</body>
-</html>'''
+@app.route('/sign_up', methods=['POST'])
+def sign_up():
+    data = request.json
+    db_sess = db_session.create_session()
+    user = db_sess.query(User).filter(User.username == data['username']).first()
 
-@app.route('/image_mars')
-def image_mars():
-    return f'''<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
-<main>
-    <h1>Привет, Марс!</h1>>
-    <img src="/static/img/mars.jpg" alt="error">
-    <p>Вот она какая, красная планета.</p>
-</main>
-</body>
-</html>'''
+    if user != None:
+        return {'error': 'Имя существует'}
+    else:
+        user = User()
+        user.username = data['username']
+        user.hashed_password = generate_password_hash(data['password'])
+        db_sess.add(user)
+        db_sess.commit()
+        return {'success': 'Вы успешно заригестрировали аккаунт'}
+
+
+@app.route('/log_in', methods=['POST'])
+def log_in():
+    data = request.json
+    db_sess = db_session.create_session()
+    user = db_sess.query(User).filter(User.username == data['username']).first()
+
+    if user != None and (check_password_hash(user.hashed_password, data['password'])):
+        session = Session()
+        session.username = data['username']
+        session.token = str(uuid.uuid4())
+        session.created_date = datetime.datetime.now()
+        session.expires_at = session.created_date + datetime.timedelta(days=30)
+        db_sess.add(session)
+        db_sess.commit()
+        return {'token': session.token, 'username': session.username}
+    else:
+        return {'error': 'Пользователь не существует или неверный пароль'}
+
+
+@app.route('/profil', methods=['POST'])
+def profil():
+    data = request.json
+    db_sess = db_session.create_session()
+    session = db_sess.query(Session).filter(Session.token == data['token']).first()
+    if session == None or session.expires_at < datetime.datetime.now():
+        return {"error": True}
+    else:
+        profil = db_sess.query(User).filter(User.username == session.username).first()
+        matchs = db_sess.query(ViewedMatchs).join(User).filter(User.username == session.username).all()
+        players = db_sess.query(ViewedPlayers).join(User).filter(User.username == session.username).all()
+        return {
+                   "profil": {"username": profil.username, "created_date": profil.created_date},
+                   "matchs": [{"match_id": match.match_id} for match in matchs],
+                   "players": [{"steam_id": player.steam_id} for player in players]
+               }
+
+
+@app.route('/delete_session', methods=['POST'])
+def delete_session():
+    data = request.json
+    db_sess = db_session.create_session()
+    session = db_sess.query(Session).filter(Session.token == data['token']).first()
+    if session != None:
+        db_sess.delete(session)
+        db_sess.commit()
+        return {"success": True}
+    else:
+        return {"error": "Session not found"}
+
+
+@app.route('/add_player', methods=['POST'])
+def add_player():
+    data = request.json
+    db_sess = db_session.create_session()
+    session = db_sess.query(Session).filter(Session.token == data['token']).first()
+    if session is None or session.expires_at < datetime.datetime.now():
+        return {"error": True}
+    else:
+        user = db_sess.query(User).filter(User.username == session.username).first()
+        viewed_player = db_sess.query(ViewedPlayers).filter(ViewedPlayers.user_id == user.id, ViewedPlayers.steam_id == data['steam_id']).first()
+        if viewed_player is None:
+            viewed_player = ViewedPlayers(user_id=user.id, steam_id=data['steam_id'])
+            db_sess.add(viewed_player)
+            db_sess.commit()
+            return {"success": True}
+        else:
+            return {"error": "Player already viewed"}
+
+
+@app.route('/add_match', methods=['POST'])
+def add_match():
+    data = request.json
+    db_sess = db_session.create_session()
+    session = db_sess.query(Session).filter(Session.token == data['token']).first()
+    if session is None or session.expires_at < datetime.datetime.now():
+        return {"error": True}
+    else:
+        user = db_sess.query(User).filter(User.username == session.username).first()
+        viewed_match = db_sess.query(ViewedMatchs).filter(ViewedMatchs.user_id == user.id, ViewedMatchs.match_id == data['match_id']).first()
+        if viewed_match is None:
+            viewed_match = ViewedMatchs(user_id=user.id, match_id=data['match_id'])
+            db_sess.add(viewed_match)
+            db_sess.commit()
+            return {"success": True}
+        else:
+            return {"success": False, "message": "Match already viewed"}
+
+
+def main():
+    db_session.global_init("db/base.db")
+    app.run('0.0.0.0')
 
 
 if __name__ == '__main__':
-    app.run(port=8080, host='127.0.0.1')
+    main()
