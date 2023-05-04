@@ -74,36 +74,44 @@
 			let icon_player = document.getElementById("icon_player");
 
 			function add_player(player) {
-				var cookieValue = decodeURIComponent(document.cookie.replace(/(?:(?:^|.*;\s*)myCookie\s*\=\s*([^;]*).*$)|^.*$/, "$1"));
-				var jsonData = JSON.parse(cookieValue);
-				if ("token" in jsonData) {
-					fetch('/add_player', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json'
-						},
-						body: JSON.stringify({
-							steam_id: player,
-							token: jsonData['token']
+				try {
+					var cookieValue = decodeURIComponent(document.cookie.replace(/(?:(?:^|.*;\s*)myCookie\s*\=\s*([^;]*).*$)|^.*$/, "$1"));
+					var jsonData = JSON.parse(cookieValue);
+					if ("token" in jsonData) {
+						fetch('/add_player', {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json'
+							},
+							body: JSON.stringify({
+								steam_id: player,
+								token: jsonData['token']
+							})
 						})
-					})
+					}
+				} catch (e) {
+					;
 				}
 			}
 
 			function add_match(match) {
-				var cookieValue = decodeURIComponent(document.cookie.replace(/(?:(?:^|.*;\s*)myCookie\s*\=\s*([^;]*).*$)|^.*$/, "$1"));
-				var jsonData = JSON.parse(cookieValue);
-				if ("token" in jsonData) {
-					fetch('/add_match', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json'
-						},
-						body: JSON.stringify({
-							match_id: match,
-							token: jsonData['token']
+				try {
+					var cookieValue = decodeURIComponent(document.cookie.replace(/(?:(?:^|.*;\s*)myCookie\s*\=\s*([^;]*).*$)|^.*$/, "$1"));
+					var jsonData = JSON.parse(cookieValue);
+					if ("token" in jsonData) {
+						fetch('/add_match', {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json'
+							},
+							body: JSON.stringify({
+								match_id: match,
+								token: jsonData['token']
+							})
 						})
-					})
+					}
+				} catch (e) {
+					;
 				}
 			}
 
@@ -251,10 +259,13 @@
 
 							var match = document.createElement("button");
 							match.style = "background-color: rgb(128, 105, 80); border: 5px solid rgb(102, 83, 63); border-radius: 9px; font-family: Arial, sans-serif; font-size: 24px; color: rgb(250, 231, 180); margin-top: 7px; display: flex; justify-content: center; align-items: center; margin-left: auto; margin-right: auto;";
-							match.onclick = function() {
-								input_match.value = val3["match_id"];
-								search_for_match_by_matchid()
+							var onClickHandler = function(match_id) {
+								return function() {
+									input_match.value = match_id;
+									search_for_match_by_matchid();
+									};
 							};
+							match.onclick = onClickHandler(val3["match_id"]);
 
 							var match_id = document.createElement("img");
 							match_id.style = "padding: 8px; width: 142px; height: 80px;";
@@ -408,35 +419,41 @@
 
 											var val3;
 											async function for_await() {
-												for (val3 of data['matchs']) {
-													var response = await fetch("https://api.opendota.com/api/matches/" + val3["match_id"]);
-													var data_ = await response.json();
-													console.log(data_);
-													var match = document.createElement("button");
-													match.style = "background-color: rgb(128, 105, 80); border: 5px solid rgb(102, 83, 63); border-radius: 9px; font-family: Arial, sans-serif; font-size: 24px; color: rgb(250, 231, 180); margin-top: 7px; display: flex; justify-content: space-between; align-items: center; width: 100%;";
-													match.onclick = function() {
-														input_match = val3["match_id"];
-														search_for_match_by_matchid()
-													};
+											  for (val3 of data['matchs']) {
+												var response = await fetch("https://api.opendota.com/api/matches/" + val3["match_id"]);
+												var data_ = await response.json();
+												console.log(data_);
 
-													var match_id = document.createElement("div");
-													match_id.style = "padding: 15px; text-align: center; font-family: Arial, sans-serif; font-size: 24px; color: rgb(250, 231, 180);";
-													match_id.innerHTML = val3['match_id'];
+												var onClickHandler = function(match_id) {
+												  return function() {
+													input_match.value = match_id;
+													search_for_match_by_matchid();
+												  };
+												};
 
-													var brief_information = document.createElement("div");
-													brief_information.innerHTML = `<div style="width: 100%; height: 30px; color: rgb(128, 105, 80); font-family: Arial, sans-serif; font-size: 25px; font-weight: bold; text-align: center; line-height: 30px; color: ${data_['radiant_win'] ? '#1ff707' : '#f56262'};">${data['radiant_win'] ? 'radiant win' : 'dire win'}</div>` +
-																				  `<div style="display: flex; flex-direction: row; width: 270px; height: 30px;">` +
-																					  `<div style="width: 130px; height: 30px; font-family: Arial, sans-serif; font-size: 20px; text-align: center; line-height: 30px;">` +
-																						  `<span style="color: #79d43d; font-family: Arial, sans-serif; font-size: 20px; text-align: center; line-height: 30px;">` +
-																							  `${data_['radiant_score']}` +
-																						  `</span>` +
-																						  `:` +
-																						  `<span style="color: red; font-family: Arial, sans-serif; font-size: 20px; text-align: center; line-height: 30px;">` +
-																							  `${data_['dire_score']}` +
-																						  `</span>` +
-																					  `</div>` +
-																					  `<div style="width: 130px; height: 30px; color: rgb(250, 231, 180); font-family: Arial, sans-serif; font-size: 20px; text-align: center; line-height: 30px;">` +
-																						`${formatTime(data_['duration'])}` +
+												var match = document.createElement("button");
+												match.style = "background-color: rgb(128, 105, 80); border: 5px solid rgb(102, 83, 63); border-radius: 9px; font-family: Arial, sans-serif; font-size: 24px; color: rgb(250, 231, 180); margin-top: 7px; display: flex; justify-content: space-between; align-items: center; width: 100%;";
+
+												match.onclick = onClickHandler(val3["match_id"]);
+
+												var match_id = document.createElement("div");
+												match_id.style = "padding: 15px; text-align: center; font-family: Arial, sans-serif; font-size: 24px; color: rgb(250, 231, 180);";
+												match_id.innerHTML = val3['match_id'];
+
+												var brief_information = document.createElement("div");
+												brief_information.innerHTML = `<div style="width: 100%; height: 30px; color: rgb(128, 105, 80); font-family: Arial, sans-serif; font-size: 25px; font-weight: bold; text-align: center; line-height: 30px; color: ${data_['radiant_win'] ? '#1ff707' : '#f56262'};">${data['radiant_win'] ? 'radiant win' : 'dire win'}</div>` +
+												  `<div style="display: flex; flex-direction: row; width: 270px; height: 30px;">` +
+												  `<div style="width: 130px; height: 30px; font-family: Arial, sans-serif; font-size: 20px; text-align: center; line-height: 30px;">` +
+												  `<span style="color: #79d43d; font-family: Arial, sans-serif; font-size: 20px; text-align: center; line-height: 30px;">` +
+												  `${data_['radiant_score']}` +
+												  `</span>` +
+												  `:` +
+												  `<span style="color: red; font-family: Arial, sans-serif; font-size: 20px; text-align: center; line-height: 30px;">` +
+												  `${data_['dire_score']}` +
+												  `</span>` +
+												  `</div>` +
+												  `<div style="width: 130px; height: 30px; color: rgb(250, 231, 180); font-family: Arial, sans-serif; font-size: 20px; text-align: center; line-height: 30px;">` +
+												  `${formatTime(data_['duration'])}` +
 																					  `</div>` +
 																				  `</div>`;
 
@@ -463,6 +480,7 @@
 
 													var item = document.createElement("div");
 												    item.style = 'background-color: #806950; border: 5px solid #66533f; border-radius: 9px; font-family: Arial, sans-serif; font-size: 24px; color: #fae7b4; margin-top: 7px; display: flex; justify-content: space-between; align-items: center;';
+												    console.log(data_);
 												    item.innerHTML = `<img src="${data_["profile"]["avatarfull"]}" alt="alt" style="padding: 15px; width: 110px; height: 110px; text-align: center;"><button onclick="one_player('${val3['steam_id']}')" style="padding: 15px; text-align: center; margin-left: auto; margin-right: auto; background-color: #806950; font-family: Arial, sans-serif; font-size: 24px; color: #fae7b4; border: none;">${data_["profile"]["personaname"]}</button>`;
 
 												    players_viewed.appendChild(item);
@@ -774,6 +792,7 @@
 							};
 						};
 					};
+
 					var dota_items = await fetch("https://api.opendota.com/api/constants/item_ids");
 					var dota_items = await dota_items.json();
 
